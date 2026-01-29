@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.6.0/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <link rel="stylesheet" href="assets/styles.css"/>
+
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_b9f0d932e128ac1c1121839b1abd8d59" ></div>
+<!-- HUD TOP -->
+<div id="hudTop" class="hud-top">
+  <div class="meta" style="min-width:0;">
+    <span class="brand">CREEKVISION</span>
+    <span class="hud-sep">|</span>
+    <span class="hud-pill" title="Modo operativo">MODO: <span style="color:var(--cv-accent); font-weight:950;">FORENSE</span></span>
+    <span class="hud-pill" id="hudSelected" title="Selección activa">SEL: —</span>
+    <span class="hud-pill" id="hudHyp" title="Hipótesis activa">H: —</span>
+    <span class="hud-pill" id="hudEvent" title="Evento activo">EV: —</span>
+  </div>
+
+  <div class="meta">
+    <span class="hud-pill hud-status" id="hudStatus">ESTADO: LISTO</span>
+    <span class="hud-pill hud-clock" id="hudTime">--:--:--</span>
+  </div>
+</div>
+
+<!-- LEFT PANEL (Intel) -->
+<div class="hud-panel" id="panel">
+  <div class="hud-head">
+    <div class="hud-hgroup">
+      <p class="hud-title">INTEL</p>
+      <div class="hud-sub">Radar de vecinas con tiempos estimados por distancia. Sin ruteo vial.</div>
+    </div>
+    <button class="hud-icon" id="minBtn" type="button" title="Minimizar">▢</button>
+  </div>
+
+  <div class="hud-body" id="body">
+    <div class="hud-search-wrap">
+      <div class="hud-search-icon">⌕</div>
+      <input id="q" class="hud-input" placeholder="Buscar por ID (001/770) o texto…" />
+      <div id="qr" class="hud-search-results"></div>
+    </div>
+
+    <div class="hud-actions">
+      <button class="cv-btn" id="clearBtn" type="button">Limpiar</button>
+      <button class="cv-btn" id="centerBtn" type="button">Centrar</button>
+    </div>
+
+    <div class="hud-divider"></div>
+
+    <div id="eventBlock" style="display:none;">
+      <div class="hud-row">
+        <div class="hud-section-title" style="margin:0;">Evento</div>
+        <div class="cv-chip"><span class="dot"></span><span id="eventChip">E-001</span></div>
+      </div>
+
+      <div class="small" id="eventInfo">Definí un evento (CONTROL → Definir) y mirá dónde puede aparecer el objetivo.</div>
+
+
+      <details class="range">
+        <summary>
+          <div style="display:flex; gap:10px; align-items:center; min-width:0;">
+            <span class="dot" style="background:rgba(234,255,246,0.55);"></span>
+            <span>EVIDENCIA</span>
+          </div>
+          <span class="badge" id="det_count">0</span>
+        </summary>
+        <div class="list" id="det_list"><div class="small">Sin detecciones registradas.</div></div>
+      </details>      <details class="range" open>
+        <summary>
+          <div style="display:flex; gap:10px; align-items:center; min-width:0;">
+            <span class="dot" style="background:var(--cv-accent);"></span>
+            <span>AHORA (±30s)</span>
+          </div>
+          <span class="badge" id="ev_count_now">0</span>
+        </summary>
+        <div class="list" id="ev_list_now"><div class="small">Sin evento.</div></div>
+      </details>
+
+      <details class="range">
+        <summary>
+          <div style="display:flex; gap:10px; align-items:center; min-width:0;">
+            <span class="dot" style="background:var(--cv-line-strong);"></span>
+            <span>PRÓXIMAS (ventana)</span>
+          </div>
+          <span class="badge" id="ev_count_next">0</span>
+        </summary>
+        <div class="list" id="ev_list_next"><div class="small">Sin evento.</div></div>
+      </details>
+
+      <details class="range">
+        <summary>
+          <div style="display:flex; gap:10px; align-items:center; min-width:0;">
+            <span class="dot" style="background:var(--cv-amber);"></span>
+            <span>PASADAS (missed)</span>
+          </div>
+          <span class="badge" id="ev_count_past">0</span>
+        </summary>
+        <div class="list" id="ev_list_past"><div class="small">Sin evento.</div></div>
+      </details>
+
+
+      <details class="range">
+        <summary>
+          <div style="display:flex; gap:10px; align-items:center; min-width:0;">
+            <span class="dot" style="background:var(--cv-red);"></span>
+            <span>DESCARTADAS (neg)</span>
+          </div>
+          <span class="badge" id="ev_count_neg">0</span>
+        </summary>
+        <div class="list" id="ev_list_neg"><div class="small">Sin descartes.</div></div>
+      </details>
+
+      <div class="small" style="margin-top:8px;">
+        Tip: tecla <b>E</b> para definir evento · click en un ítem para centrar/inspeccionar cámara.
+      </div>
+
+      <div class="hud-divider"></div>
+    </div>
+
+    <div class="hud-row">
+      <div class="hud-section-title" style="margin:0;">Seleccionada</div>
+      <div class="cv-chip"><span class="dot"></span><span id="sel">—</span></div>
+    </div>
+
+    <div class="kv">
+      <div class="kvc"><div class="k">Vecinas ≤ 1500</div><div class="v" id="k_total">0</div></div>
+      <div class="kvc"><div class="k">Nearest</div><div class="v" id="k_near">—</div></div>
+      <div class="kvc"><div class="k">Sitios únicos</div><div class="v" id="k_sites">0</div></div>
+      <div class="kvc"><div class="k">Aislamiento</div><div class="v" id="k_iso">—</div></div>
+    </div>
+
+    <div class="cv-legend" id="legend"></div>
+
+    <details class="range" open>
+      <summary>
+        <div style="display:flex; gap:10px; align-items:center; min-width:0;">
+          <span class="dot"></span>
+          <span>Mismo sitio (&lt;5m)</span>
+        </div>
+        <span class="badge" id="count_same">0</span>
+      </summary>
+      <div class="list" id="list_same"><div class="small">Seleccioná una cámara.</div></div>
+    </details>
+
+    <div id="ranges"></div>
+
+    <div class="small" style="margin-top:10px;">
+      Atajos: 1–5 filtra anillo, 0 muestra todas, Esc limpia, C centra, Enter selecciona búsqueda.
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL (Control) -->
+<div class="hud-panel" id="hudRight">
+  <div class="hud-head">
+    <div class="hud-hgroup">
+      <p class="hud-title">CONTROL</p>
+      <div class="hud-sub">Capas, filtros y supuestos de tiempo.</div>
+    </div>
+    <div class="hud-pill" id="assumpBadge" title="Factor · km/h · km/h">×1.25 · 5 km/h · 25 km/h</div>
+  </div>
+
+  <div class="hud-body">
+    <div class="hud-section-title">Evento</div>
+
+    <div class="hud-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+      <button class="cv-btn" id="eventPlace" type="button">Definir (click)</button>
+      <button class="cv-btn" id="eventClear" type="button">Borrar</button>
+    </div>
+
+    <select id="eventTarget" class="hud-select" style="margin-top:10px;">
+      <option value="person" selected>OBJ: PERSONA</option>
+      <option value="vehicle">OBJ: AUTO</option>
+    </select>
+
+    <select id="eventType" class="hud-select" style="margin-top:8px;">
+      <option value="sospechoso" selected>TYPE: SOSPECHOSO</option>
+      <option value="robo">TYPE: ROBO</option>
+      <option value="fuga">TYPE: FUGA</option>
+      <option value="seguimiento">TYPE: SEGUIMIENTO</option>
+      <option value="otro">TYPE: OTRO</option>
+    </select>
+
+    <div class="hud-step" style="margin-top:10px;">
+      <div class="row">
+        <div class="name">Ocurrió hace (min)</div>
+        <div class="hud-stepper" data-target="eventAgo">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="eventAgoVal">5</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="eventAgo" min="0" max="120" step="1" value="5" />
+    </div>
+
+    <div class="hud-step" style="margin-top:8px;">
+      <div class="row">
+        <div class="name">Confianza</div>
+        <div class="hud-stepper" data-target="eventConf">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="eventConfVal">0.60</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="eventConf" min="0" max="1" step="0.05" value="0.60" />
+    </div>
+
+    <div class="small" id="eventMeta" style="margin-top:8px;">T0: — · Δt: — · Rnow: —</div>
+
+    <div class="hud-divider"></div>
+
+    <div class="hud-section-title">Detecciones</div>
+    <div class="small" id="detHelp">Seleccioná una cámara (o una candidata del evento) para registrar evidencia del objetivo.</div>
+
+    <div class="hud-row" style="margin-top:8px;">
+      <div class="cv-chip" style="flex:1;"><span class="dot" style="background:var(--cv-line-strong);"></span><span id="detCam">CAM: —</span></div>
+    </div>
+
+    <div class="hud-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+      <button class="cv-btn" id="detPos" type="button">Visto</button>
+      <button class="cv-btn" id="detWeak" type="button">Indicio</button>
+    </div>
+
+    <div class="hud-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+      <button class="cv-btn" id="detNeg" type="button">No visto</button>
+      <button class="cv-btn" id="detExport" type="button">Export JSON</button>
+    </div>
+
+    <div class="hud-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+      <button class="cv-btn" id="detClear" type="button">Borrar dets</button>
+      <button class="cv-btn" id="detUndo" type="button">Undo</button>
+    </div>
+
+    <select id="detTarget" class="hud-select" style="margin-top:10px;">
+      <option value="inherit" selected>OBJ: (igual al evento)</option>
+      <option value="person">OBJ: PERSONA</option>
+      <option value="vehicle">OBJ: AUTO</option>
+    </select>
+
+    <div class="hud-step" style="margin-top:10px;">
+      <div class="row">
+        <div class="name">Ocurrió hace (min)</div>
+        <div class="hud-stepper" data-target="detAgo">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="detAgoVal">0</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="detAgo" min="0" max="240" step="1" value="0" />
+    </div>
+
+    <div class="hud-step" style="margin-top:8px;">
+      <div class="row">
+        <div class="name">Ventana NO VISTO (min)</div>
+        <div class="hud-stepper" data-target="detNegWin">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="detNegWinVal">2</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="detNegWin" min="1" max="90" step="1" value="2" />
+    </div>
+
+    <div class="hud-step" style="margin-top:8px;">
+      <div class="row">
+        <div class="name">Confianza</div>
+        <div class="hud-stepper" data-target="detConf">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="detConfVal">0.80</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="detConf" min="0" max="1" step="0.05" value="0.80" />
+    </div>
+
+    <input id="detNote" class="hud-input" placeholder="Nota (opcional)…" style="margin-top:8px; padding-left:12px;" />
+    <div class="small" id="detMeta" style="margin-top:8px;">—</div>
+
+    <div class="hud-divider"></div>
+
+    <div class="hud-section-title">Capas</div>
+
+    <div class="hud-toggle">
+      <label for="circles">Anillos guía</label>
+      <input type="checkbox" id="circles" checked />
+    </div>
+
+    <div class="hud-toggle">
+      <label for="only">Solo vecinas</label>
+      <input type="checkbox" id="only" />
+    </div>
+
+    <div class="hud-toggle">
+      <label for="mutual">Solo mutual</label>
+      <input type="checkbox" id="mutual" />
+    </div>
+
+    <div class="hud-divider"></div>
+
+    <div class="hud-section-title">Hipótesis</div>
+    <select id="hypSelect" class="hud-select"></select>
+
+    <div class="hud-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:10px;">
+      <button class="cv-btn" id="hypNew" type="button">+ Nueva</button>
+      <button class="cv-btn" id="hypDup" type="button">Duplicar</button>
+    </div>
+
+    <div class="hud-actions" style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px;">
+      <button class="cv-btn" id="hypLock" type="button">Lock</button>
+      <button class="cv-btn" id="hypDel" type="button">Borrar</button>
+    </div>
+
+    <div class="hud-step" style="margin-top:10px;">
+      <div class="row">
+        <div class="name">Confianza</div>
+        <div class="hud-stepper" data-target="hypConf">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="hypConfVal">0.50</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="hypConf" min="0" max="1" step="0.05" value="0.50" />
+    </div>
+
+    <div class="small" id="hypMeta" style="margin-top:8px;">rev — · updated —</div>
+
+    <div class="hud-divider"></div>
+
+    <div class="hud-section-title">Tiempo</div>
+    <select id="timeMode" class="hud-select">
+      <option value="both" selected>WALK + DRIVE</option>
+      <option value="walk">WALK</option>
+      <option value="drive">DRIVE</option>
+      <option value="off">OFF</option>
+    </select>
+
+    <div class="hud-divider"></div>
+
+    <div class="hud-section-title">Modelo de movimiento</div>
+
+    <div class="hud-step">
+      <div class="row">
+        <div class="name">Factor desvío</div>
+        <div class="hud-stepper" data-target="detour">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="detourVal">1.25</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="detour" min="1.00" max="1.60" step="0.05" value="1.25" />
+    </div>
+
+    <div class="hud-step">
+      <div class="row">
+        <div class="name">Velocidad a pie (km/h)</div>
+        <div class="hud-stepper" data-target="walkSpeed">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="walkVal">5</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="walkSpeed" min="3" max="6.5" step="0.5" value="5" />
+    </div>
+
+    <div class="hud-step">
+      <div class="row">
+        <div class="name">Velocidad auto (km/h)</div>
+        <div class="hud-stepper" data-target="driveSpeed">
+          <button type="button" data-stepper="minus">−</button>
+          <div class="val"><span id="driveVal">25</span></div>
+          <button type="button" data-stepper="plus">+</button>
+        </div>
+      </div>
+      <input class="hud-hidden" type="range" id="driveSpeed" min="10" max="60" step="5" value="25" />
+    </div>
+
+    <div class="small" style="margin-top:10px;">
+      Nota: el tiempo es estimado por distancia (con factor desvío). Para tiempos por calles: OSRM/GraphHopper.
+    </div>
+
+    <div class="hud-divider"></div>
+
+    <div class="hud-actions">
+      <button class="cv-btn" id="copyBtn" type="button">Copiar resumen</button>
+      <button class="cv-btn" id="csvBtn" type="button">Exportar CSV</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM TELEMETRY -->
+<div id="hudBottom" class="hud-bottom">
+  <span class="kvp"><span class="k">LAT</span><span class="val" id="tel_lat">—</span></span>
+  <span class="hud-sep">|</span>
+  <span class="kvp"><span class="k">LON</span><span class="val" id="tel_lon">—</span></span>
+  <span class="hud-sep">|</span>
+  <span class="kvp"><span class="k">ZOOM</span><span class="val" id="tel_zoom">—</span></span>
+  <span class="hud-sep">|</span>
+  <span class="kvp"><span class="k">NEAR</span><span class="val" id="tel_near">—</span></span>
+  <span class="hud-sep">|</span>
+  <span class="kvp"><span class="k">RING</span><span class="val" id="tel_ring">ALL</span></span>
+</div>
+
+<!-- MAP OVERLAY -->
+<div id="mapOverlay" aria-hidden="true"></div>
+
+<div class="toast" id="toast"></div>
+
+  <script type="module" src="src/app/bootstrap.js"></script>
+</body>
+</html>
