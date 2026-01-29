@@ -1,4 +1,10 @@
 const STORAGE_KEY = "cv-state-v1";
+const LEGACY_KEYS = {
+  hypotheses: "cv.hypotheses.v1",
+  event: "cv.event",
+  detections: "cv.detections",
+  ui: "cv.ui.v1",
+};
 
 let state = null;
 const listeners = new Set();
@@ -45,15 +51,49 @@ function defaultState() {
 function readStorage() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (raw) {
+      return JSON.parse(raw);
+    }
+    return readLegacyStorage();
   } catch (error) {
     return null;
   }
 }
 
+function readLegacyStorage() {
+  try {
+    const legacy = {};
+    const rawHyp = localStorage.getItem(LEGACY_KEYS.hypotheses);
+    const rawEvent = localStorage.getItem(LEGACY_KEYS.event);
+    const rawDet = localStorage.getItem(LEGACY_KEYS.detections);
+    const rawUi = localStorage.getItem(LEGACY_KEYS.ui);
+
+    if (rawHyp) legacy.hypotheses = JSON.parse(rawHyp);
+    if (rawEvent) legacy.event = JSON.parse(rawEvent);
+    if (rawDet) legacy.detections = JSON.parse(rawDet);
+    if (rawUi) legacy.ui = JSON.parse(rawUi);
+
+    if (Object.keys(legacy).length === 0) {
+      return null;
+    }
+
+    writeStorage(legacy);
+    return legacy;
+  } catch (error) {
+    return null;
+  }
+}
+
+function serializeState(nextState) {
+  const selection = nextState.selection
+    ? { ...nextState.selection, mutualSet: null }
+    : nextState.selection;
+  return { ...nextState, selection };
+}
+
 function writeStorage(nextState) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState(nextState)));
   } catch (error) {
     // ignore storage failures
   }
@@ -102,10 +142,13 @@ export function persistState(payload) {
     throw new Error("Store not initialized. Call createStore() first.");
   }
 
+  const defaults = defaultState();
   const next = { ...state };
   for (const [key, value] of Object.entries(payload || {})) {
     if (value === true) {
       next[key] = state[key];
+    } else if (value === null) {
+      next[key] = defaults[key];
     } else {
       next[key] = value;
     }
