@@ -1,93 +1,171 @@
-import { schema } from "./schema.js";
-
-const STORAGE_KEYS = {
+const STORAGE_KEY = "cv-state-v1";
+const LEGACY_KEYS = {
   hypotheses: "cv.hypotheses.v1",
   event: "cv.event",
   detections: "cv.detections",
   ui: "cv.ui.v1",
 };
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
+let state = null;
+const listeners = new Set();
+
+function defaultState() {
+  return {
+    selection: {
+      selected: null,
+      ringFilter: "ALL",
+      hovered: null,
+      mutualSet: null,
+    },
+    hypotheses: {
+      list: [],
+      activeId: null,
+    },
+    event: {
+      active: false,
+      placing: false,
+      lat: null,
+      lon: null,
+      t0ms: null,
+      id: "E-001",
+      target: "person",
+      type: "sighting",
+      confidence: 0.6,
+      horizonSec: 600,
+      pastWindowSec: 600,
+    },
+    detections: {
+      list: [],
+      nextSeq: 1,
+      lastUndoId: null,
+      eventId: "E-001",
+    },
+    ui: {
+      showCircles: true,
+      onlyNeighbors: false,
+      onlyMutual: false,
+    },
+  };
 }
 
-function readJSON(key) {
+function readStorage() {
   try {
-    const raw = localStorage.getItem(key);
-    if (!raw) return null;
-    return JSON.parse(raw);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+    return readLegacyStorage();
   } catch (error) {
     return null;
   }
 }
 
-function writeJSON(key, value) {
+function readLegacyStorage() {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    const legacy = {};
+    const rawHyp = localStorage.getItem(LEGACY_KEYS.hypotheses);
+    const rawEvent = localStorage.getItem(LEGACY_KEYS.event);
+    const rawDet = localStorage.getItem(LEGACY_KEYS.detections);
+    const rawUi = localStorage.getItem(LEGACY_KEYS.ui);
+
+    if (rawHyp) legacy.hypotheses = JSON.parse(rawHyp);
+    if (rawEvent) legacy.event = JSON.parse(rawEvent);
+    if (rawDet) legacy.detections = JSON.parse(rawDet);
+    if (rawUi) legacy.ui = JSON.parse(rawUi);
+
+    if (Object.keys(legacy).length === 0) {
+      return null;
+    }
+
+    writeStorage(legacy);
+    return legacy;
   } catch (error) {
-    // Ignorar errores de storage.
+    return null;
   }
 }
 
-function removeKey(key) {
+function serializeState(nextState) {
+  const selection = nextState.selection
+    ? { ...nextState.selection, mutualSet: null }
+    : nextState.selection;
+  return { ...nextState, selection };
+}
+
+function writeStorage(nextState) {
   try {
-    localStorage.removeItem(key);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState(nextState)));
   } catch (error) {
-    // Ignorar errores de storage.
+    // ignore storage failures
   }
 }
 
-export function createStore(initialState) {
-  let state = initialState;
-  const listeners = new Set();
-
-  const getState = () => state;
-
-  const setState = (updater) => {
-    const next = typeof updater === "function" ? updater(state) : updater;
-    if (!next || typeof next !== "object") return state;
-    state = { ...state, ...next };
-    listeners.forEach((listener) => listener(state));
-    return state;
-  };
-
-  const subscribe = (listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  };
-
-  const load = (loader) => {
-    const next = typeof loader === "function" ? loader(state) : state;
-    if (next && typeof next === "object") {
-      state = next;
-      listeners.forEach((listener) => listener(state));
-    }
-    return state;
-  };
-
-  const persist = (persister) => {
-    if (typeof persister === "function") {
-      persister(state);
-    }
-    return state;
-  };
-
-  return {
-    getState,
-    setState,
-    subscribe,
-    load,
-    persist,
-  };
+function notify() {
+  for (const listener of listeners) {
+    listener(state);
+  }
 }
 
-const store = createStore(clone(schema));
+export function createStore() {
+  if (state) {
+    return { getState, subscribe, loadState, persistState };
+  }
+  const stored = readStorage();
+  state = defaultState();
+  if (stored) {
+    state = {
+      ...state,
+      ...stored,
+      selection: { ...state.selection, ...(stored.selection || {}) },
+      hypotheses: { ...state.hypotheses, ...(stored.hypotheses || {}) },
+      event: { ...state.event, ...(stored.event || {}) },
+      detections: { ...state.detections, ...(stored.detections || {}) },
+      ui: { ...state.ui, ...(stored.ui || {}) },
+    };
+  }
+  return { getState, subscribe, loadState, persistState };
+}
 
-export const getState = () => store.getState();
-export const setState = (updater) => store.setState(updater);
-export const subscribe = (listener) => store.subscribe(listener);
+export function getState() {
+  if (!state) {
+    throw new Error("Store not initialized. Call createStore() first.");
+  }
+  return state;
+}
 
-export function loadState(options = {}) {
+export function subscribe(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function persistState(payload) {
+  if (!state) {
+    throw new Error("Store not initialized. Call createStore() first.");
+  }
+
+  const defaults = defaultState();
+  const next = { ...state };
+  for (const [key, value] of Object.entries(payload || {})) {
+    if (value === true) {
+      next[key] = state[key];
+    } else if (value === null) {
+      next[key] = defaults[key];
+    } else {
+      next[key] = value;
+    }
+  }
+  state = {
+    ...state,
+    ...next,
+  };
+  writeStorage(state);
+  notify();
+}
+
+export function loadState({ hypothesesBaseline } = {}) {
+  if (!state) {
+    throw new Error("Store not initialized. Call createStore() first.");
+  }
+  const stored = readStorage();
   const loaded = {
     hypotheses: false,
     event: false,
@@ -95,91 +173,28 @@ export function loadState(options = {}) {
     ui: false,
   };
 
-  const next = store.load((current) => {
-    const state = { ...current };
-
-    const hyp = readJSON(STORAGE_KEYS.hypotheses);
-    if (hyp && Array.isArray(hyp.list) && hyp.list.length > 0) {
-      state.hypotheses = {
-        list: hyp.list,
-        activeId: hyp.activeId && hyp.list.some((h) => h.id === hyp.activeId)
-          ? hyp.activeId
-          : hyp.list[0].id,
-      };
-      loaded.hypotheses = true;
-    } else if (options.hypothesesBaseline) {
-      state.hypotheses = options.hypothesesBaseline;
-    }
-
-    const ev = readJSON(STORAGE_KEYS.event);
-    if (ev && isFinite(ev.lat) && isFinite(ev.lon) && ev.t0ms) {
-      state.event = {
-        ...state.event,
-        ...ev,
-        active: true,
-      };
-      loaded.event = true;
-    } else if (options.eventDefaults) {
-      state.event = {
-        ...state.event,
-        ...options.eventDefaults,
-      };
-    }
-
-    const det = readJSON(STORAGE_KEYS.detections);
-    if (det && Array.isArray(det.list)) {
-      state.detections = {
-        ...state.detections,
-        list: det.list,
-        nextSeq: det.nextSeq || (det.list.length + 1) || 1,
-        lastUndoId: null,
-      };
-      loaded.detections = true;
-    }
-
-    const ui = readJSON(STORAGE_KEYS.ui);
-    if (ui && typeof ui === "object") {
-      state.ui = {
-        ...state.ui,
-        ...ui,
-      };
-      loaded.ui = true;
-    }
-
-    return state;
-  });
-
-  return { state: next, loaded };
-}
-
-export function persistState(options = {}) {
-  const state = getState();
-
-  if (options.hypotheses) {
-    const payload = options.hypotheses === true ? state.hypotheses : options.hypotheses;
-    writeJSON(STORAGE_KEYS.hypotheses, payload);
+  if (stored && stored.hypotheses) {
+    state.hypotheses = stored.hypotheses;
+    loaded.hypotheses = true;
+  } else if (hypothesesBaseline) {
+    state.hypotheses = hypothesesBaseline;
   }
 
-  if (options.event !== undefined) {
-    if (options.event === null) {
-      removeKey(STORAGE_KEYS.event);
-    } else {
-      const payload = options.event === true ? state.event : options.event;
-      writeJSON(STORAGE_KEYS.event, payload);
-    }
+  if (stored && stored.event) {
+    state.event = { ...state.event, ...stored.event, active: true };
+    loaded.event = true;
   }
 
-  if (options.detections !== undefined) {
-    if (options.detections === null) {
-      removeKey(STORAGE_KEYS.detections);
-    } else {
-      const payload = options.detections === true ? state.detections : options.detections;
-      writeJSON(STORAGE_KEYS.detections, payload);
-    }
+  if (stored && stored.detections) {
+    state.detections = { ...state.detections, ...stored.detections };
+    loaded.detections = true;
   }
 
-  if (options.ui) {
-    const payload = options.ui === true ? state.ui : options.ui;
-    writeJSON(STORAGE_KEYS.ui, payload);
+  if (stored && stored.ui) {
+    state.ui = { ...state.ui, ...stored.ui };
+    loaded.ui = true;
   }
+
+  notify();
+  return { loaded };
 }
