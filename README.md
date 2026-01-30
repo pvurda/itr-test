@@ -5,6 +5,9 @@
    ```bash
    python -m http.server 8000
    ```
+3. Validar el entrypoint con `npm run check:syntax`.
+
+Nota: `node -e import(...)` no es el check recomendado porque ejecuta el módulo.
 
 # Decisiones clave del refactor (sin cambiar comportamiento)
 
