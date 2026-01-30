@@ -1,7 +1,6 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-
-const {destinationPoint, bearingBetween} = require('../src/utils/geo');
+import test from "node:test";
+import assert from "node:assert/strict";
+import { destinationPoint, bearingBetween } from "../src/utils/geo.js";
 
 const almostEqual = (a, b, eps = 1e-6) => Math.abs(a - b) <= eps;
 

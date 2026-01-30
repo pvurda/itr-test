@@ -1,7 +1,6 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-
-const {buildDetectionsExportPayload, buildNeighborCsvRows} = require('../src/utils/export');
+import test from "node:test";
+import assert from "node:assert/strict";
+import { buildDetectionsExportPayload, buildNeighborCsvRows } from "../src/utils/export.js";
 
 test('buildDetectionsExportPayload returns expected structure', () => {
   const payload = buildDetectionsExportPayload({

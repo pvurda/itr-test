@@ -1,7 +1,6 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-
-const {kmhToMps, fmtTimeSeconds, fmtMMSS, fmtSignedDelta, fmtHHMMSS} = require('../src/utils/time');
+import test from "node:test";
+import assert from "node:assert/strict";
+import { kmhToMps, fmtTimeSeconds, fmtMMSS, fmtSignedDelta, fmtHHMMSS } from "../src/utils/time.js";
 
 test('kmhToMps converts km/h to m/s', () => {
   assert.equal(kmhToMps(3.6), 1);

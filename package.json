@@ -1,0 +1,9 @@
+{
+  "name": "itr-test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "serve": "python -m http.server 8000"
+  }
+}

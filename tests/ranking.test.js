@@ -1,12 +1,11 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-
-const {
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
   calculateEtaSeconds,
   calculateDeltaSeconds,
   buildEventEntry,
   sortEventEntries,
-} = require('../src/features/ranking/eventRanking');
+} from "../src/features/ranking/eventRanking.js";
 
 test('calculateEtaSeconds and calculateDeltaSeconds preserve math', () => {
   assert.equal(calculateEtaSeconds(100, 1.5, 2), 75);
@@ -43,4 +42,3 @@ test('sortEventEntries respects mutual and delta ordering', () => {
   sortEventEntries(entries, {mode: 'next', preferLpr: false, isLpr});
   assert.deepEqual(entries.map(e => e.idx), [2, 3, 1]);
 });
-
