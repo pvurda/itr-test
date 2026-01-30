@@ -6,10 +6,8 @@
    python -m http.server 8000
    ```
 
-> Nota: el repositorio actualmente contiene `mapa_radar_vecinas_v9_detections (1).html`. No se creó ni renombró `index.html` en este cambio.
-
 # Decisiones clave del refactor (sin cambiar comportamiento)
 
-- No se modificó el HTML existente ni sus dependencias externas (CDN). Se preserva el comportamiento observado.
-- Se evitó renombrar o mover archivos para no alterar rutas ni contratos de uso actuales.
-- El cambio es únicamente documental para clarificar operación y mantener invariantes de ejecución.
+- `index.html` queda controlado por el repo y carga el entrypoint `src/app/entrypoint.js`.
+- El contenedor del mapa usa el ID estable `map` (sin IDs generados).
+- Se elimina la dependencia de HTML generado por Folium para evitar regeneración de IDs.
