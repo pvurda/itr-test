@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:syntax": "node --check src/app/entrypoint.js",
     "test": "node --test",
     "serve": "python -m http.server 8000"
   }
